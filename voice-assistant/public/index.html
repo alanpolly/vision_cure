@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="VisionCure Voice Assistant — hands-free medical guidance for elderly patients." />
+  <title>VisionCure · Voice Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ========== RESET & BASE ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #0b0f1a;
+      --bg-card:      rgba(255,255,255,0.04);
+      --bg-glass:     rgba(255,255,255,0.06);
+      --border-glass: rgba(255,255,255,0.08);
+      --accent:       #6c63ff;
+      --accent-glow:  rgba(108,99,255,0.35);
+      --accent-light: #a29bfe;
+      --success:      #00cec9;
+      --danger:       #ff6b6b;
+      --text:         #e0e0e0;
+      --text-muted:   #8892b0;
+      --font:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ========== AMBIENT BACKGROUND ========== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 20%, rgba(108,99,255,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 80% 80%, rgba(0,206,201,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ========== MAIN CONTAINER ========== */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 460px;
+      width: 100%;
+    }
+
+    /* ========== LOGO / HEADER ========== */
+    .brand {
+      text-align: center;
+    }
+    .brand h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    .brand p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 0.35rem;
+    }
+
+    /* ========== TRANSCRIPT CARD ========== */
+    .transcript-card {
+      width: 100%;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 1.25rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 1.5rem;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: border-color 0.3s;
+    }
+    .transcript-card:hover {
+      border-color: rgba(108,99,255,0.25);
+    }
+
+    .message {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fadeUp 0.4s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .message-icon.user  { background: rgba(108,99,255,0.15); }
+    .message-icon.bot   { background: rgba(0,206,201,0.15); }
+
+    .message-text {
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: var(--text);
+      padding-top: 0.3rem;
+    }
+    .message-text.muted { color: var(--text-muted); font-style: italic; font-size: 0.85rem; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 120px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      gap: 0.5rem;
+    }
+    .empty-state span { font-size: 1.75rem; }
+
+    /* ========== MIC BUTTON ========== */
+    .mic-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Pulsing rings when listening */
+    .mic-wrapper.listening::before,
+    .mic-wrapper.listening::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      animation: pulse-ring 1.8s ease-out infinite;
+    }
+    .mic-wrapper.listening::before {
+      width: 100px; height: 100px;
+    }
+    .mic-wrapper.listening::after {
+      width: 130px; height: 130px;
+      animation-delay: 0.4s;
+    }
+    @keyframes pulse-ring {
+      0%   { transform: scale(0.8); opacity: 0.6; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .mic-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #8b7ffa);
+      color: #fff;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 24px var(--accent-glow);
+      transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+      position: relative;
+      z-index: 2;
+    }
+    .mic-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 32px var(--accent-glow);
+    }
+    .mic-btn:active {
+      transform: scale(0.96);
+    }
+    .mic-btn.listening {
+      background: linear-gradient(135deg, var(--danger), #ee5a24);
+      box-shadow: 0 4px 24px rgba(255,107,107,0.35);
+    }
+    .mic-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ========== STATUS BADGE ========== */
+    .status {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 0.35rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 999px;
+      transition: all 0.3s;
+      min-height: 1.6rem;
+      text-align: center;
+    }
+    .status.active {
+      color: var(--accent-light);
+      border-color: rgba(108,99,255,0.3);
+      background: rgba(108,99,255,0.08);
+    }
+
+    /* ========== TEXT FALLBACK ========== */
+    .text-fallback {
+      width: 100%;
+      display: flex;
+      gap: 0.5rem;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .text-fallback:focus-within { opacity: 1; }
+    .text-fallback input {
+      flex: 1;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.55rem 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+    .text-fallback input:focus { outline: none; border-color: var(--accent); }
+    .text-fallback button {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0 0.85rem;
+      cursor: pointer;
+    }
+    .text-fallback button:hover { background: var(--accent); }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-height: 640px) {
+      .container { gap: 1rem; padding: 1rem; }
+      .transcript-card { min-height: 100px; padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="brand">
+      <h1>VisionCure Assistant</h1>
+      <p>Tap the mic and ask me anything</p>
+    </div>
+
+    <div class="transcript-card" id="transcript">
+      <div class="empty-state" id="emptyState">
+        <span>🎙️</span>
+        Press the button below to start talking
+      </div>
+    </div>
+
+    <div class="mic-wrapper" id="micWrapper">
+      <button class="mic-btn" id="micBtn" aria-label="Start voice assistant">🎤</button>
+    </div>
+
+    <div class="status" id="status">Ready</div>
+
+    <!-- Text Fallback for Hackathon (in case Mic fails) -->
+    <form class="text-fallback" id="textForm">
+      <input type="text" id="textInput" placeholder="Or type here..." autocomplete="off">
+      <button type="submit">→</button>
+    </form>
+  </div>
+
+  <script>
+    // ============================================
+    //  Voice Assistant — Frontend Logic
+    // ============================================
+
+    const micBtn       = document.getElementById('micBtn');
+    const micWrapper   = document.getElementById('micWrapper');
+    const statusEl     = document.getElementById('status');
+    const transcript   = document.getElementById('transcript');
+    const emptyState   = document.getElementById('emptyState');
+    const API_URL      = '/api/chat';
+
+    // ---- Speech Recognition Setup ----
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      statusEl.textContent = '⚠️ Speech Recognition not supported — use Chrome or Edge';
+      micBtn.disabled = true;
+    }
+
+    let recognition = null;
+    let isListening = false;
+    let listeningStartTime = 0;
+
+    function createRecognition() {
+      const rec = new SpeechRecognition();
+      rec.lang           = 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.continuous      = false;
+
+      rec.onresult = (event) => {
+        const spoken = event.results[0][0].transcript;
+        stopListeningUI();
+        addMessage('user', spoken);
+        setStatus('Thinking…', true);
+        sendToBackend(spoken);
+      };
+
+      rec.onerror = (event) => {
+        console.error('Speech error:', event.error);
+        stopListeningUI();
+        if (event.error === 'no-speech') {
+          setStatus("I didn't hear anything — try again");
+        } else if (event.error === 'not-allowed') {
+          setStatus('⚠️ Microphone access denied');
+        } else {
+          setStatus(`Error: ${event.error} — try again`);
+        }
+      };
+
+      rec.onend = () => {
+        // Ensure UI resets if recognition ends silently (e.g. mic blocked by OS)
+        if (isListening) {
+          stopListeningUI();
+          // If it ended in less than 1.5 seconds without a result, the mic stream failed to open
+          if (Date.now() - listeningStartTime < 1500) {
+            setStatus('⚠️ Mic blocked by Windows or Browser');
+          } else {
+            setStatus('Ready');
+          }
+        }
+      };
+
+      return rec;
+    }
+
+    // ---- UI Helpers ----
+    function setStatus(text, active = false) {
+      statusEl.textContent = text;
+      statusEl.classList.toggle('active', active);
+    }
+
+    function addMessage(role, text) {
+      // Remove empty state on first message
+      if (emptyState) emptyState.remove();
+
+      const msg = document.createElement('div');
+      msg.className = 'message';
+
+      const icon = document.createElement('div');
+      icon.className = `message-icon ${role === 'user' ? 'user' : 'bot'}`;
+      icon.textContent = role === 'user' ? '🧑' : '🤖';
+
+      const body = document.createElement('div');
+      body.className = 'message-text';
+      body.textContent = text;
+
+      msg.appendChild(icon);
+      msg.appendChild(body);
+      transcript.appendChild(msg);
+
+      // Auto-scroll
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    function startListeningUI() {
+      isListening = true;
+      micBtn.classList.add('listening');
+      micWrapper.classList.add('listening');
+      micBtn.textContent = '⏹️';
+      setStatus('Listening…', true);
+    }
+
+    function stopListeningUI() {
+      isListening = false;
+      micBtn.classList.remove('listening');
+      micWrapper.classList.remove('listening');
+      micBtn.textContent = '🎤';
+      micBtn.disabled = false;
+    }
+
+    // ---- Core Flow ----
+    const textForm  = document.getElementById('textForm');
+    const textInput = document.getElementById('textInput');
+
+    textForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = textInput.value.trim();
+      if (!val) return;
+      textInput.value = '';
+      if (isListening) stopListeningUI();
+      addMessage('user', val);
+      setStatus('Thinking…', true);
+      sendToBackend(val);
+    });
+
+    micBtn.addEventListener('click', () => {
+      if (isListening) {
+        recognition.abort();
+        stopListeningUI();
+        setStatus('Cancelled');
+        return;
+      }
+
+      // Stop any ongoing speech before listening
+      window.speechSynthesis.cancel();
+
+      recognition = createRecognition();
+      listeningStartTime = Date.now();
+      recognition.start();
+      startListeningUI();
+    });
+
+    async function sendToBackend(userMessage) {
+      micBtn.disabled = true;
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userMessage }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Server error');
+        }
+
+        const reply = data.reply || "I'm sorry, I couldn't generate a response.";
+        addMessage('bot', reply);
+        setStatus('Speaking…', true);
+        speak(reply);
+      } catch (err) {
+        console.error('Backend error:', err);
+        const fallback = "I'm having trouble connecting. Please try again.";
+        addMessage('bot', fallback);
+        setStatus('Error');
+        speak(fallback);
+      }
+    }
+
+    // ---- Text-to-Speech ----
+    function speak(text) {
+      window.speechSynthesis.cancel(); // Clear queue
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate  = 0.92;  // Slightly slower for elderly users
+      utterance.pitch = 1.0;
+      utterance.lang  = 'en-US';
+
+      // Prefer a natural-sounding voice
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))
+                     || voices.find(v => v.lang.startsWith('en-') && v.localService);
+      if (preferred) utterance.voice = preferred;
+
+      utterance.onend = () => {
+        setStatus('Ready');
+        micBtn.disabled = false;
+      };
+
+      utterance.onerror = () => {
+        setStatus('Ready');
+        micBtn.disabled = false;
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Preload voices (Chrome needs this)
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+  </script>
+</body>
+</html>

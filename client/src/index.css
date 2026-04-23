@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   VisionCure — Global Premium Light Design System
+   ============================================ */
+
+:root {
+  --vc-primary: #4f46e5;
+  --vc-primary-warm: #7c3aed;
+  --vc-secondary: #0ea5e9;
+  --vc-tertiary: #10b981;
+  --vc-error: #ef4444;
+  --vc-warning: #f59e0b;
+  --vc-bg-gradient: linear-gradient(165deg, #f0f4ff 0%, #e8f0fe 25%, #ffffff 50%, #f5f0ff 75%, #eef7ff 100%);
+  --vc-white-glass: rgba(255, 255, 255, 0.75);
+  --vc-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --vc-shadow-md: 0 8px 30px rgba(79, 70, 229, 0.12);
+  --vc-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.08);
+  --vc-radius-lg: 2rem;
+  --vc-radius-md: 1.5rem;
+  --vc-radius-sm: 1rem;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-900 overflow-x-hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-extrabold tracking-tight;
+  }
+}
+
+/* Global App Container */
+.vc-app-body {
+  position: relative;
+  min-height: 100vh;
+  background: var(--vc-bg-gradient);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism Panels */
+.vc-glass {
+  background: var(--vc-white-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.vc-card {
+  @apply vc-glass shadow-sm transition-all duration-300;
+  border-radius: var(--vc-radius-lg);
+}
+
+.vc-card:hover {
+  @apply shadow-md;
+  transform: translateY(-2px);
+}
+
+/* Premium Buttons */
+.vc-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold text-white transition-all duration-300;
+  background: linear-gradient(135deg, var(--vc-primary), var(--vc-primary-warm));
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35);
+}
+
+.vc-btn-primary:hover {
+  @apply shadow-lg;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(79, 70, 229, 0.45);
+}
+
+.vc-btn-primary:active {
+  @apply scale-95;
+  transform: translateY(0);
+}
+
+.vc-btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold text-slate-700 vc-glass transition-all duration-200 border border-slate-200/50;
+}
+
+.vc-btn-secondary:hover {
+  @apply bg-white shadow-sm;
+}
+
+/* ============================================
+   Accessibility CSS Overrides
+   ============================================ */
+
+/* ---- Large Text Mode ---- */
+html.large-text {
+  font-size: 130% !important;
+}
+
+html.large-text h1 { font-size: 3.5rem !important; }
+html.large-text h2 { font-size: 2.8rem !important; }
+html.large-text p, html.large-text span, html.large-text button { 
+  font-size: 1.15rem !important; 
+}
+
+/* ---- High Contrast Mode ---- */
+html.high-contrast {
+  --hc-bg: #ffffff;
+  --hc-fg: #000000;
+  --hc-accent: #312e81; /* Deep Indigo for better contrast */
+  --hc-border: #000000;
+}
+
+html.high-contrast .vc-app-body {
+  background: #ffffff !important;
+}
+
+html.high-contrast .vc-glass {
+  background: #ffffff !important;
+  border: 3px solid #000000 !important;
+  backdrop-filter: none !important;
+}
+
+html.high-contrast .text-on-surface,
+html.high-contrast .text-on-surface-variant,
+html.high-contrast .text-slate-600,
+html.high-contrast p {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+html.high-contrast .vc-btn-primary {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+}
+
+/* ============================================
+   Utilities
+   ============================================ */
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.vc-gradient-text {
+  background: linear-gradient(135deg, var(--vc-primary) 0%, var(--vc-primary-warm) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.vc-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: -1;
+}
