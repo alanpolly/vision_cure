@@ -6,6 +6,8 @@
 
 ## 🌟 Key Features
 
+### Scanning prescripstion and saving for remainder
+
 ### 🩺 Clinical Safety Engine (New!)
 - **AI-Driven Interaction Check**: Uses Google Gemini 1.5 Flash to analyze your entire medication history for dangerous drug-to-drug interactions, contraindications, and dietary conflicts.
 - **Severity-Coded Alerts**: Instant visual feedback with **CRITICAL (Red)**, **MODERATE (Amber)**, and **LOW (Slate)** risk cards.
