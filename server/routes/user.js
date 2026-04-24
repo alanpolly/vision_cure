@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const User = require('../models/User');
+const { sendMessage, bot } = require('../services/telegramBot');
 
 /**
  * POST /api/user/profile
- * Upserts a user's profile information (Telegram ID, Caregiver Phone)
+ * Updates a user's Telegram ID and Caregiver Phone in MongoDB
  */
 router.post('/profile', async (req, res) => {
   const { userId, telegramId, caregiverPhone } = req.body;
@@ -13,23 +14,19 @@ router.post('/profile', async (req, res) => {
     return res.status(400).json({ error: 'Missing userId' });
   }
 
-  if (!supabase) {
-    console.warn('[USER PROFILE] Running in MOCK mode — profile not persisted.');
-    return res.json({ success: true, message: 'Profile updated (MOCK MODE)' });
-  }
-
   try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .upsert({ 
-        user_id: userId, 
-        telegram_id: telegramId,
-        caregiver_phone: caregiverPhone
-      }, { onConflict: 'user_id' });
+    const updateFields = {};
+    if (telegramId !== undefined) updateFields.telegramId = telegramId;
+    if (caregiverPhone !== undefined) updateFields.caregiverPhone = caregiverPhone;
 
-    if (error) throw error;
+    const user = await User.findByIdAndUpdate(userId, updateFields, { new: true });
 
-    res.json({ success: true, message: 'Profile updated successfully' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`[USER PROFILE] Updated user ${userId}: telegramId=${user.telegramId}, caregiverPhone=${user.caregiverPhone}`);
+    res.json({ success: true, message: 'Profile updated successfully', profile: { telegram_id: user.telegramId, caregiver_phone: user.caregiverPhone } });
   } catch (err) {
     console.error('[USER PROFILE ERROR]', err.message);
     res.status(500).json({ error: 'Failed to update profile', message: err.message });
@@ -38,28 +35,55 @@ router.post('/profile', async (req, res) => {
 
 /**
  * GET /api/user/profile/:userId
- * Fetches a user's profile information
+ * Fetches a user's profile information from MongoDB
  */
 router.get('/profile/:userId', async (req, res) => {
   const { userId } = req.params;
 
-  if (!supabase) {
-    return res.json({ profile: { telegram_id: '@AchyuthCV', caregiver_phone: '8105219623' } });
-  }
-
   try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const user = await User.findById(userId);
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
+    if (!user) {
+      return res.json({ profile: null });
+    }
 
-    res.json({ profile: data || null });
+    res.json({
+      profile: {
+        telegram_id: user.telegramId || '',
+        caregiver_phone: user.caregiverPhone || '',
+        fullName: user.fullName,
+        email: user.email
+      }
+    });
   } catch (err) {
     console.error('[USER PROFILE FETCH ERROR]', err.message);
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+/**
+ * POST /api/user/telegram-test
+ * Sends a test message to the user's Telegram ID to verify the bot works
+ */
+router.post('/telegram-test', async (req, res) => {
+  const { telegramId } = req.body;
+
+  if (!telegramId) {
+    return res.status(400).json({ error: 'Missing telegramId' });
+  }
+
+  if (!bot) {
+    return res.status(503).json({ error: 'Telegram bot is not initialized. Check TELEGRAM_BOT_TOKEN in .env' });
+  }
+
+  try {
+    const testMsg = `✅ VisionCure Test Message\n\nHello! Your Telegram integration is working perfectly.\n\n🕐 Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n💊 You will receive medication reminders here.\n\nReply TAKEN to acknowledge future reminders.`;
+    await sendMessage(telegramId, testMsg);
+    console.log(`[TELEGRAM TEST] Test message sent successfully to ${telegramId}`);
+    res.json({ success: true, message: `Test message sent to Telegram ID: ${telegramId}` });
+  } catch (err) {
+    console.error('[TELEGRAM TEST ERROR]', err.message);
+    res.status(500).json({ error: 'Failed to send test message', message: err.message });
   }
 });
 

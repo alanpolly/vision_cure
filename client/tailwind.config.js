@@ -63,7 +63,10 @@ export default {
       fontFamily: {
         "headline": ["Public Sans"],
         "body": ["Public Sans"],
-        "label": ["Public Sans"]
+        "label": ["Public Sans"],
+        "inter": ["Inter", "sans-serif"],
+        "outfit": ["Outfit", "sans-serif"],
+        "sans": ["Inter", "Public Sans", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
     },

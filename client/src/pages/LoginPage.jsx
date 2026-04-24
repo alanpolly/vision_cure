@@ -1,167 +1,220 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { ThemeSwitcher } from '../components/ui/ThemeSwitcher';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
+import { FlickeringGrid } from '../components/ui/FlickeringGrid';
 
 function LoginPage() {
   const navigate = useNavigate();
   const { signIn, signUp, signOut } = useAuth();
+  const { t } = useLanguage();
 
   React.useEffect(() => {
     signOut();
   }, []);
 
   const [isSignUp, setIsSignUp] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
-    if (!email.trim() || !password.trim()) {
+    if (!formData.email || !formData.password) {
       setError('Please fill in all fields.');
       return;
     }
-    if (password.length < 6) {
+
+    if (isSignUp && !formData.name) {
+      setError('Please enter your name.');
+      return;
+    }
+
+    if (isSignUp && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     try {
       if (isSignUp) {
-        await signUp(email.trim(), password, fullName.trim());
-        navigate('/dashboard');
+        await signUp(formData.email.trim(), formData.password, formData.name.trim());
       } else {
-        await signIn(email.trim(), password);
-        navigate('/dashboard');
+        await signIn(formData.email.trim(), formData.password);
       }
+      navigate('/dashboard');
     } catch (err) {
       console.error('Auth error:', err);
       setError(err.message || 'Authentication failed. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="vc-app-body min-h-screen flex flex-col items-center justify-center p-4">
-      {/* Decorative blurred blobs */}
-      <div className="vc-blob w-[500px] h-[500px] top-[-100px] left-[-100px]" style={{ background: 'radial-gradient(circle, #c7d2fe 0%, transparent 70%)' }}></div>
-      <div className="vc-blob w-[400px] h-[400px] bottom-[-50px] right-[5%]" style={{ background: 'radial-gradient(circle, #ddd6fe 0%, transparent 70%)' }}></div>
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden py-20">
+      <FlickeringGrid />
 
-      <div className="w-full max-w-md z-10">
-        <div className="text-center mb-10">
-          <div 
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/70 backdrop-blur-md rounded-2xl border border-white/50 shadow-sm mb-6 cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-             <div className="w-8 h-8 bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-lg flex items-center justify-center text-white shadow-md">
-                <span className="material-symbols-outlined text-[1rem]">eye</span>
-             </div>
-             <span className="font-black text-lg tracking-tight vc-gradient-text uppercase">VisionCure</span>
+      {/* Minimal Nav */}
+      <nav className="absolute top-0 left-0 w-full px-6 md:px-10 py-6 flex items-center justify-between z-50">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 rounded-full dark:bg-white bg-black flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+            <span className="dark:text-black text-white font-bold text-sm outfit">V</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight mb-2">
-            {isSignUp ? 'Join VisionCure' : 'Welcome Back'}
-          </h1>
-          <p className="text-slate-500 font-medium text-lg">
-            {isSignUp ? 'Start your safe medication journey.' : 'Your personal health guardian awaits.'}
-          </p>
+          <span className="dark:text-white text-black font-bold text-lg tracking-tight uppercase outfit">
+            Vision <span className="dark:text-white/25 text-black/25">Cure</span>
+          </span>
+        </Link>
+        <div className="flex gap-2 items-center">
+          <LanguageSwitcher />
+          <ThemeSwitcher />
         </div>
+      </nav>
 
-        <div className="vc-glass p-8 md:p-10 rounded-[2.5rem] border border-white/60 shadow-xl">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50/50 border border-red-100 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-              <span className="material-symbols-outlined text-red-500 text-[1.2rem]">error</span>
-              <p className="text-red-700 text-sm font-semibold">{error}</p>
-            </div>
-          )}
+      {/* Auth Card */}
+      <motion.div
+        initial={{ y: 20 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-[440px] px-6"
+      >
+        <div className="p-8 rounded-3xl dark:bg-white/[0.02] bg-black/[0.02] dark:border dark:border-white/[0.08] border border-black/[0.08] backdrop-blur-2xl dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-bold uppercase tracking-wide outfit mb-2 dark:text-white text-black">
+              {isSignUp ? t('signup_title') : t('login_title')}
+            </h2>
+            <p className="dark:text-white/40 text-black/40 text-sm inter">
+              {isSignUp ? 'Join the next generation of healthcare' : t('login_sub')}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium text-center inter">
+                {error}
+              </motion.div>
+            )}
+
             {isSignUp && (
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wider dark:text-white/50 text-black/50 ml-1">Full Name</label>
                 <input
-                  className="w-full h-14 px-5 rounded-2xl bg-white/60 border border-white/40 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all font-medium text-slate-800 placeholder:text-slate-300 outline-none"
-                  placeholder="e.g. Martha Stewart"
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="John Doe"
+                  className="w-full px-5 py-3.5 rounded-xl dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.08] border-black/[0.08] dark:text-white text-black text-sm inter outline-none dark:focus:border-white/20 focus:border-black/20 transition-colors placeholder:dark:text-white/20 placeholder:text-black/30"
                 />
               </div>
             )}
-            
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium uppercase tracking-wider dark:text-white/50 text-black/50 ml-1">{t('email')}</label>
               <input
-                className="w-full h-14 px-5 rounded-2xl bg-white/60 border border-white/40 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all font-medium text-slate-800 placeholder:text-slate-300 outline-none"
-                placeholder="you@example.com"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="you@example.com"
+                className="w-full px-5 py-3.5 rounded-xl dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.08] border-black/[0.08] dark:text-white text-black text-sm inter outline-none dark:focus:border-white/20 focus:border-black/20 transition-colors placeholder:dark:text-white/20 placeholder:text-black/30"
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Password</label>
-                <button 
-                  type="button" 
+            <div className="space-y-1 relative">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-[11px] font-medium uppercase tracking-wider dark:text-white/50 text-black/50">{t('pass')}</label>
+                {!isSignUp && (
+                  <Link to="/forgot-password" className="text-[11px] font-medium dark:text-white/40 text-black/40 hover:dark:text-white/80 hover:text-black/80 transition-colors">Forgot?</Link>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-5 py-3.5 pr-12 rounded-xl dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.08] border-black/[0.08] dark:text-white text-black text-sm inter outline-none dark:focus:border-white/20 focus:border-black/20 transition-colors placeholder:dark:text-white/20 placeholder:text-black/30 tracking-widest"
+                />
+                <button
+                  type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-[11px] font-black text-indigo-500 hover:text-indigo-700 uppercase"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 dark:text-white/40 text-black/40 hover:dark:text-white/80 hover:text-black/80 transition-colors"
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-.722-3.25"/><path d="M2 8a10.645 10.645 0 0 0 20 0"/><path d="m20 15-1.726-2.05"/><path d="m4 15 1.726-2.05"/><path d="m9 18 .722-3.25"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
                 </button>
               </div>
-              <input
-                className="w-full h-14 px-5 rounded-2xl bg-white/60 border border-white/40 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all font-medium text-slate-800 placeholder:text-slate-300 outline-none"
-                placeholder="••••••••"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
             </div>
 
+            {isSignUp && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wider dark:text-white/50 text-black/50 ml-1">Confirm Password</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-5 py-3.5 rounded-xl dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.08] border-black/[0.08] dark:text-white text-black text-sm inter outline-none dark:focus:border-white/20 focus:border-black/20 transition-colors placeholder:dark:text-white/20 placeholder:text-black/30 tracking-widest"
+                />
+              </div>
+            )}
+
             <button
-              className="w-full h-14 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-full font-bold text-lg shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
+              className="w-full py-3.5 mt-2 rounded-xl dark:bg-white dark:text-black bg-black text-white text-sm font-bold uppercase tracking-wider outfit transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 dark:shadow-[0_4px_20px_rgba(255,255,255,0.1)] shadow-[0_4px_20px_rgba(0,0,0,0.1)]"
             >
-              {loading ? (
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>{isSignUp ? 'Create Account' : 'Log In'}</>
-              )}
+              {isLoading ? (
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              ) : isSignUp ? t('signup_title') : t('sign_in')}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-white/40 text-center">
-            <p className="text-slate-500 font-medium">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}
-              <button 
-                type="button" 
-                onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-                className="ml-2 text-indigo-600 font-bold hover:underline"
-              >
-                {isSignUp ? 'Log In' : 'Sign Up'}
-              </button>
-            </p>
+          <div className="my-6 flex items-center gap-3">
+            <div className="flex-1 h-px dark:bg-white/10 bg-black/10" />
+            <span className="text-[10px] font-medium uppercase tracking-wider dark:text-white/30 text-black/30">Or</span>
+            <div className="flex-1 h-px dark:bg-white/10 bg-black/10" />
           </div>
+
+          <button
+            type="button"
+            className="w-full py-3.5 rounded-xl border dark:border-white/15 border-black/15 dark:bg-white/[0.02] bg-black/[0.02] text-sm font-medium inter transition-all duration-300 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 dark:text-white/80 text-black/80 hover:dark:text-white hover:text-black hover:dark:border-white/30 hover:border-black/30"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            {isSignUp ? 'Sign up with Google' : 'Continue with Google'}
+          </button>
+
+          <p className="mt-8 text-center text-xs dark:text-white/40 text-black/40 inter">
+            {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+            <button
+              type="button"
+              onClick={() => { setIsSignUp(!isSignUp); setError(''); setFormData({ name: '', email: '', password: '', confirmPassword: '' }); }}
+              className="font-medium dark:text-white text-black hover:underline underline-offset-4"
+            >
+              {isSignUp ? t('sign_in') : t('register')}
+            </button>
+          </p>
         </div>
-        
-        <div className="text-center mt-8">
-           <Link to="/" className="text-slate-400 hover:text-slate-600 font-bold text-sm tracking-tight transition-colors">
-              <span className="material-symbols-outlined text-[1rem] align-middle mr-1">arrow_back</span>
-              Back to Home
-           </Link>
-        </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

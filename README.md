@@ -47,12 +47,14 @@
 Create a `.env` file in the `server/` directory:
 ```env
 PORT=3001
-GEMINI_API_KEY=your_key
-GROQ_API_KEY=your_key
-ELEVENLABS_API_KEY=your_key
-TELEGRAM_BOT_TOKEN=your_token
-SUPABASE_URL=your_url
-SUPABASE_ANON_KEY=your_key
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+MONGODB_URI=your_mongodb_uri
+JWT_SECRET=your_jwt_secret
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### 2. Database Setup

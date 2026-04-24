@@ -1,15 +1,17 @@
-const supabase = require('../config/supabase');
+const User = require('../models/User');
+const MedicationSchedule = require('../models/MedicationSchedule');
+const MedicationLog = require('../models/MedicationLog');
 const { sendMessage, bot } = require('./telegramBot');
 
 // In-memory store for tracking acknowledgments (for demo purposes)
-// Format: { chatId_medName_time: { userId, medName, dosage, scheduledTime, startTime, reminded15: false, reminded30: false } }
+// Format: { chatId_medName_time: { userId, medName, dosage, scheduledTime, startTime, reminded15: false, reminded30: false, chatId } }
 const pendingAcks = {};
 
 /**
  * Starts the reminder scheduler loop
  */
 function startScheduler() {
-  console.log('[SCHEDULER] Medication reminder scheduler started.');
+  console.log('[SCHEDULER] Medication reminder scheduler started (MongoDB linked).');
   
   // 1. Run every 60 seconds
   setInterval(async () => {
@@ -34,27 +36,23 @@ function startScheduler() {
  * Checks for medications due in the current minute
  */
 async function checkAndSendReminders() {
-  if (!supabase) return;
-
   try {
     const now = new Date();
+    // Use local time for HH:MM comparison since the server and user are expected to be in same timezone for this MVP
     const currentHHMM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
-    // Fetch meds joined with user profiles to get telegram_id
-    // We filter by times array containing the current HH:MM
-    const { data: medications, error } = await supabase
-      .from('medication_schedule')
-      .select('*, user_profiles(telegram_id)')
-      .filter('times', 'cs', `{"${currentHHMM}"}`);
-
-    if (error) throw error;
+    // Fetch all medications scheduled for this exact time
+    const medications = await MedicationSchedule.find({ times: currentHHMM });
     if (!medications || medications.length === 0) return;
 
     for (const med of medications) {
-      const telegramId = med.user_profiles?.telegram_id;
-      if (!telegramId) continue;
+      // Find the user to get their telegramId
+      const user = await User.findById(med.userId);
+      if (!user || !user.telegramId) continue;
 
-      const message = `Time to take your ${med.name} ${med.dosage}! This is your VisionCure medication reminder. Please confirm you have taken it by replying TAKEN.`;
+      const telegramId = user.telegramId;
+      const message = `Time to take your ${med.name} ${med.dosage}! This is your VisionCure medication reminder.\n\nPlease confirm you have taken it by replying TAKEN.`;
+      
       await sendMessage(telegramId, message);
 
       // Track for acknowledgment
@@ -70,11 +68,11 @@ async function checkAndSendReminders() {
         chatId: telegramId
       };
 
-      // Log as PENDING in DB
-      await supabase.from('medication_logs').insert({
-        user_id: med.userId,
-        medicine_name: med.name,
-        scheduled_time: currentHHMM,
+      // Log as PENDING in MongoDB
+      await MedicationLog.create({
+        userId: med.userId,
+        medicineName: med.name,
+        scheduledTime: currentHHMM,
         status: 'PENDING'
       });
     }
@@ -87,7 +85,7 @@ async function checkAndSendReminders() {
  * Handles "TAKEN" reply from Telegram
  */
 async function handleTakenAcknowledgment(chatId) {
-  // Find all pending acks for this user
+  // Find all pending acks for this chat ID
   const keys = Object.keys(pendingAcks).filter(k => pendingAcks[k].chatId === chatId);
   
   if (keys.length === 0) {
@@ -99,15 +97,16 @@ async function handleTakenAcknowledgment(chatId) {
     const ack = pendingAcks[key];
     
     // Update DB
-    await supabase.from('medication_logs')
-      .update({ status: 'TAKEN', taken_at: new Date().toISOString() })
-      .match({ user_id: ack.userId, medicine_name: ack.medName, scheduled_time: ack.scheduledTime, status: 'PENDING' });
+    await MedicationLog.findOneAndUpdate(
+      { userId: ack.userId, medicineName: ack.medName, scheduledTime: ack.scheduledTime, status: 'PENDING' },
+      { status: 'TAKEN', takenAt: new Date() }
+    );
 
     // Remove from memory
     delete pendingAcks[key];
   }
 
-  await sendMessage(chatId, "Great! I've logged your medication as taken. Keep it up!");
+  await sendMessage(chatId, "Great! I've logged your medication as taken. Keep it up! ✅");
 }
 
 /**
@@ -122,19 +121,20 @@ async function handleEscalations() {
 
     // 15 Minute Follow-up
     if (elapsedMins >= 15 && !ack.reminded15) {
-      await sendMessage(ack.chatId, `You have not confirmed your medication. Please take ${ack.medName} now and reply TAKEN.`);
+      await sendMessage(ack.chatId, `⚠️ Reminder: You have not confirmed your medication. Please take ${ack.medName} now and reply TAKEN.`);
       ack.reminded15 = true;
     }
 
     // 30 Minute SOS
     if (elapsedMins >= 30 && !ack.reminded30) {
-      await sendMessage(ack.chatId, `ALERT: Medication missed. Your caregiver has been notified.`);
+      await sendMessage(ack.chatId, `🚨 ALERT: Medication missed. Your caregiver has been notified.`);
       ack.reminded30 = true;
       
       // Update status to MISSED
-      await supabase.from('medication_logs')
-        .update({ status: 'MISSED' })
-        .match({ user_id: ack.userId, medicine_name: ack.medName, scheduled_time: ack.scheduledTime, status: 'PENDING' });
+      await MedicationLog.findOneAndUpdate(
+        { userId: ack.userId, medicineName: ack.medName, scheduledTime: ack.scheduledTime, status: 'PENDING' },
+        { status: 'MISSED' }
+      );
 
       // Trigger SOS (Simulated)
       await triggerSOS(ack.userId, ack.medName);
@@ -151,13 +151,13 @@ async function handleEscalations() {
 async function triggerSOS(userId, medName) {
   console.error(`[SOS ALERT] User ${userId} MISSED MEDICATION: ${medName}. Triggering caregiver alert.`);
   
-  // In a real app, this would call Twilio or a similar service.
-  // We'll log it as a critical event.
-  if (supabase) {
-    const { data: profile } = await supabase.from('user_profiles').select('caregiver_phone').eq('user_id', userId).single();
-    if (profile?.caregiver_phone) {
-      console.log(`[SOS] Notifying caregiver at ${profile.caregiver_phone}`);
+  try {
+    const user = await User.findById(userId);
+    if (user && user.caregiverPhone) {
+      console.log(`[SOS] 📞 Notifying caregiver at ${user.caregiverPhone}`);
     }
+  } catch (err) {
+    console.error('[SOS ERROR]', err.message);
   }
 }
 

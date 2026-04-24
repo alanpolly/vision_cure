@@ -16,7 +16,7 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     let data;
     
-    if (!apiKey || apiKey === 'dummy' || userId === 'demo-user') {
+    if (!apiKey || apiKey === 'dummy') {
       console.warn('[VISION] Using mock prescription data for demo/fallback.');
       data = {
         medications: [
@@ -71,15 +71,15 @@ Example format:
     }
 
     // Save to Supabase (and Fallback to MongoDB for compatibility)
-    if (data.medications && data.medications.length > 0 && userId && userId !== 'demo-user') {
+    if (data.medications && data.medications.length > 0 && userId) {
       try {
         const inserts = data.medications.map(m => ({
           userId: userId,
-          name: m.name,
-          dosage: m.dosage,
-          times: m.times || [],
-          frequency: m.frequency,
-          duration: m.duration
+          name: m.name || 'Unknown Medicine',
+          dosage: m.dosage || 'As directed',
+          times: m.times && m.times.length > 0 ? m.times : ['08:00'],
+          frequency: m.frequency || 'As directed',
+          duration: m.duration || 'Ongoing'
         }));
 
         // 1. Save to Supabase medication_schedule table
@@ -211,10 +211,16 @@ router.post('/check-interactions', async (req, res) => {
 // GET /api/prescription/schedule
 router.get('/schedule', async (req, res) => {
   const userId = req.query.userId || 'demo-user';
-  if (userId === 'demo-user') return res.json({ medications: [] });
 
   try {
-    const data = await MedicationSchedule.find({ userId: userId }).lean();
+    let data = [];
+    if (supabase) {
+      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
+      if (!error && sbData) data = sbData;
+    } else {
+      data = await MedicationSchedule.find({ userId: userId }).lean();
+    }
+    
     res.json({ medications: data || [] });
   } catch (err) {
     console.error('Schedule fetch error', err);
@@ -225,10 +231,15 @@ router.get('/schedule', async (req, res) => {
 // GET /api/prescription/now
 router.get('/now', async (req, res) => {
   const userId = req.query.userId || 'demo-user';
-  if (userId === 'demo-user') return res.json({ dueNow: [] });
 
   try {
-    const data = await MedicationSchedule.find({ userId: userId }).lean();
+    let data = [];
+    if (supabase) {
+      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
+      if (!error && sbData) data = sbData;
+    } else {
+      data = await MedicationSchedule.find({ userId: userId }).lean();
+    }
 
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
@@ -252,10 +263,16 @@ router.get('/now', async (req, res) => {
 // POST /api/prescription/validate-scan
 router.post('/validate-scan', async (req, res) => {
   const { scannedMedicine, userId } = req.body;
-  if (!userId || userId === 'demo-user') return res.json({ valid: true });
+  if (!userId) return res.json({ valid: true });
 
   try {
-    const data = await MedicationSchedule.find({ userId: userId }).lean();
+    let data = [];
+    if (supabase) {
+      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
+      if (!error && sbData) data = sbData;
+    } else {
+      data = await MedicationSchedule.find({ userId: userId }).lean();
+    }
 
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
