@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../lib/api';
 import Icon from './Icon';
+import { useAuth } from '../../context/AuthContext';
 
 export default function DashVoiceMic() {
+  const { user } = useAuth();
   const [listening, setListening] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -111,7 +113,7 @@ export default function DashVoiceMic() {
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text })
+        body: JSON.stringify({ question: text, userId: user?.id || 'demo-user' })
       });
       const data = await res.json();
       

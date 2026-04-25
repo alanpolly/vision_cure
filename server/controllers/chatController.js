@@ -1,4 +1,5 @@
 const OpenAI = require("openai");
+const MedicationSchedule = require("../models/MedicationSchedule");
 
 // Initialize OpenAI client pointed at Groq
 let client = null;
@@ -17,14 +18,12 @@ function getClient() {
   return client;
 }
 
-const SYSTEM_PROMPT = `You are "VisionCure Assistant," a world-class clinical pharmacist and app controller for elderly users navigating the VisionCure app.
+const SYSTEM_PROMPT_TEMPLATE = `You are "VisionCure Assistant," a world-class clinical pharmacist and app controller for elderly users navigating the VisionCure app.
 You have vast knowledge of all medications, illnesses, and medical procedures in the world. Use it.
 
 BELOW IS THE USER'S SAVED PROFILE (For context only, do NOT limit your answers to these):
 - User's Medications: 
-  1. Amlodipine 5mg: Blood pressure medicine. Take once daily in the morning.
-  2. Metformin 500mg: Diabetes medicine. Take 3 times daily strictly after food.
-  3. Warfarin 2mg: Blood thinner (Anticoagulant). Avoid foods with high Vitamin K like spinach. Never take NSAIDs.
+{{MEDICATION_LIST}}
 - App Features: 
   - The "Scan" page uses the camera to scan medicine bottles and read them out loud.
   - The "Medications" or "Schedule" page shows the daily schedule and timeline.
@@ -55,20 +54,34 @@ RULES YOU MUST FOLLOW:
  * Route: POST /api/chat
  */
 exports.askQuestion = async (req, res) => {
-  const { question } = req.body;
+  const { question, userId } = req.body;
 
   if (!question) {
     return res.status(400).json({ error: 'No question provided.' });
   }
 
   try {
+    // 1. Fetch user's actual medications from DB
+    let medListString = "  None saved yet.";
+    if (userId) {
+      const meds = await MedicationSchedule.find({ userId });
+      if (meds && meds.length > 0) {
+        medListString = meds.map((m, i) => 
+          `  ${i + 1}. ${m.name} ${m.dosage}: Take ${m.frequency} for ${m.duration}. Times: ${m.times.join(", ")}`
+        ).join("\n");
+      }
+    }
+
+    // 2. Build dynamic system prompt
+    const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace("{{MEDICATION_LIST}}", medListString);
+
     const openai = getClient();
     if (!openai) throw new Error("Voice Assistant credentials missing.");
 
     const completion = await openai.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: question.trim() },
       ],
       temperature: 0.6,

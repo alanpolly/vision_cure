@@ -19,6 +19,7 @@ export function useVoiceAssistant() {
 
   const navigate = useNavigate();
   const accessibility = useAccessibility();
+  const { user } = useDash();
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -90,7 +91,7 @@ export function useVoiceAssistant() {
       const chatRes = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userText }),
+        body: JSON.stringify({ question: userText, userId: user?.id || 'demo-user' }),
       });
       const chatData = await chatRes.json();
       
