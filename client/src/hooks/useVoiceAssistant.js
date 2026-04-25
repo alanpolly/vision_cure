@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { useDash } from '../context/DashboardContext';
 import { API_URL } from '../lib/api';
 
 /**
