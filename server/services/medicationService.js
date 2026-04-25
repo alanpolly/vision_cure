@@ -1,9 +1,7 @@
 // ============================================
-// Supabase Data Access Service
+// Medication Data Access Service
 // HARDCODED for hackathon demo — 3 medicine bottles
 // ============================================
-
-const supabase = require('../config/supabase');
 
 // ---- HARDCODED DEMO MEDICATIONS ----
 // Bottle A: Amlodipine 5mg — morning only

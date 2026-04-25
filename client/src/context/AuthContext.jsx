@@ -2,10 +2,10 @@
 // Auth Context — MongoDB & JWT Implementation
 // ============================================
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL } from '../lib/api';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'visioncure_jwt';
-const API_URL = ''; // Uses Vite proxy
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -41,11 +41,10 @@ export function AuthProvider({ children }) {
     fetchSession();
   }, []);
 
-  const signUp = async (email, password, fullName) => {
+  const signUp = async (formData) => {
     const response = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, fullName })
+      body: formData // FormData — no Content-Type header needed, browser sets it
     });
 
     let data;

@@ -29,6 +29,26 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  address: {
+    type: String,
+    default: ''
+  },
+  phoneNumber: {
+    type: String,
+    default: ''
+  },
+  recoveryMail: {
+    type: String,
+    default: ''
+  },
+  securityQuestion: {
+    type: String,
+    default: ''
+  },
+  securityAnswer: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

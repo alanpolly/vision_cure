@@ -1,10 +1,10 @@
 // ============================================
 // Schedule Controller — POST /api/schedule
-// Saves prescription to Supabase, then sets
+// Saves prescription to MongoDB, then sets
 // a Google Calendar recurring reminder.
 // ============================================
 
-const supabase = require('../config/supabase');
+const MedicationSchedule = require('../models/MedicationSchedule');
 const { createMedicationReminder } = require('../services/calendarService');
 
 /**
@@ -12,12 +12,12 @@ const { createMedicationReminder } = require('../services/calendarService');
  * 
  * Expected body:
  * {
- *   userId:         "uuid",           // Supabase auth user ID
+ *   userId:         "uuid",           // Auth user ID
  *   medicationName: "Metformin",      // Drug name
  *   dosage:         "500mg",          // Dosage string
  *   frequency:      "three_times_daily", // Frequency label
  *   times:          ["08:30", "13:30", "20:30"], // Array of 24h time strings
- *   googleTokens: {                   // User's OAuth tokens (from frontend auth flow)
+ *   googleTokens: {                   // User's OAuth tokens
  *     access_token:  "ya29...",
  *     refresh_token: "1//0e..."
  *   }
@@ -47,49 +47,34 @@ async function scheduleMedication(req, res) {
     console.log(`[SCHEDULE] New request: ${medicationName} ${dosage || ''} for user ${userId}`);
     console.log(`[SCHEDULE] Times: ${times.join(', ')} | Frequency: ${frequency || 'custom'}`);
 
-    // ---- 2. Save Prescription to Supabase ----
+    // ---- 2. Save Prescription to MongoDB ----
     let prescriptionId = null;
     let dbInsertSuccess = false;
 
-    if (supabase) {
-      // Insert into "prescriptions" table
-      const { data, error: dbError } = await supabase
-        .from('prescriptions')
-        .insert({
-          user_id: userId,
-          drug_name: medicationName,
-          dosage: dosage || null,
-          frequency: frequency || 'custom',
-          scheduled_times: times,          // Store as JSONB array
-          reminder_status: 'PENDING',      // Will update to ACTIVE or FAILED
-          is_active: true,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error('[SCHEDULE] Supabase insert failed:', dbError.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to save prescription to database.',
-          errorCode: 'DB_INSERT_FAILED',
-          details: dbError.message,
-        });
-      }
-
-      prescriptionId = data.id;
+    try {
+      const newSchedule = await MedicationSchedule.create({
+        userId,
+        name: medicationName,
+        dosage: dosage || 'Not specified',
+        frequency: frequency || 'custom',
+        duration: 'ongoing',
+        times,
+        status: 'PENDING'
+      });
+      prescriptionId = newSchedule._id.toString();
       dbInsertSuccess = true;
-      console.log(`[SCHEDULE] ✅ Prescription saved to Supabase (ID: ${prescriptionId})`);
-    } else {
-      // Supabase not configured — mock mode for hackathon demo
-      prescriptionId = `mock-${Date.now()}`;
-      dbInsertSuccess = true;
-      console.log(`[SCHEDULE] ⚠️ Supabase offline — using mock ID: ${prescriptionId}`);
+      console.log(`[SCHEDULE] ✅ Prescription saved to MongoDB (ID: ${prescriptionId})`);
+    } catch (dbError) {
+      console.error('[SCHEDULE] MongoDB insert failed:', dbError.message);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to save prescription to database.',
+        errorCode: 'DB_INSERT_FAILED',
+        details: dbError.message,
+      });
     }
 
     // ---- 3. Create Google Calendar Events ----
-    // One event per scheduled time (e.g., 3 events for TID medication)
     const calendarResults = [];
     const calendarErrors = [];
     const displayName = `${medicationName}${dosage ? ' ' + dosage : ''}`;
@@ -110,37 +95,23 @@ async function scheduleMedication(req, res) {
       }
     }
 
-    // ---- 4. Handle Partial Failures (Hackathon Error Strategy) ----
-    // DB succeeded but some/all calendar events failed?
-    // → Don't rollback the DB insert. Instead, flag it so we can retry later.
+    // ---- 4. Handle Partial Failures ----
     const allCalendarFailed = calendarResults.length === 0 && calendarErrors.length > 0;
     const someCalendarFailed = calendarErrors.length > 0 && calendarResults.length > 0;
 
-    if (supabase && prescriptionId && (allCalendarFailed || someCalendarFailed)) {
-      // Update the prescription row with failure status + partial event IDs
-      const eventIds = calendarResults.map(r => r.eventId);
-      await supabase
-        .from('prescriptions')
-        .update({
-          reminder_status: allCalendarFailed ? 'FAILED' : 'PARTIAL',
-          calendar_event_ids: eventIds.length > 0 ? eventIds : null,
-          reminder_error: calendarErrors.map(e => `${e.time}: ${e.error}`).join('; '),
-        })
-        .eq('id', prescriptionId);
-    } else if (supabase && prescriptionId && calendarResults.length > 0) {
-      // All calendar events created successfully — mark ACTIVE
-      await supabase
-        .from('prescriptions')
-        .update({
-          reminder_status: 'ACTIVE',
-          calendar_event_ids: calendarResults.map(r => r.eventId),
-        })
-        .eq('id', prescriptionId);
+    if (dbInsertSuccess && prescriptionId && (allCalendarFailed || someCalendarFailed)) {
+      await MedicationSchedule.findByIdAndUpdate(prescriptionId, {
+        status: allCalendarFailed ? 'FAILED' : 'PARTIAL',
+        // In real app, might want to save calendar_event_ids here too, but model doesn't have it
+      });
+    } else if (dbInsertSuccess && prescriptionId && calendarResults.length > 0) {
+      await MedicationSchedule.findByIdAndUpdate(prescriptionId, {
+        status: 'ACTIVE'
+      });
     }
 
     // ---- 5. Build Response ----
     if (allCalendarFailed) {
-      // DB saved, but NO reminders were set
       return res.status(207).json({
         status: 'partial_success',
         message: `Prescription saved, but Google Calendar reminders failed. You can retry from your profile.`,
@@ -152,7 +123,6 @@ async function scheduleMedication(req, res) {
       });
     }
 
-    // Full or partial success
     return res.status(201).json({
       status: someCalendarFailed ? 'partial_success' : 'success',
       message: someCalendarFailed

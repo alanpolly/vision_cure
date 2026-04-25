@@ -3,7 +3,7 @@
 // ============================================
 
 const visionService = require('../services/visionService');
-const supabaseService = require('../services/supabaseService');
+const medicationService = require('../services/medicationService');
 const rulesEngine = require('../engine/rulesEngine');
 
 /**
@@ -45,9 +45,9 @@ async function verifyMedication(req, res) {
 
     // ---- 3. Fetch User Data ----
     // For Hackathon demo, ignoring real user ID to use hardcoded profile if needed
-    let activeMeds = await supabaseService.getUserMedications(userId);
-    const schedules = await supabaseService.getUserSchedule(userId, new Date().toISOString().split('T')[0]);
-    const rules = await supabaseService.getContraindicationRules(detectedDrug.name);
+    let activeMeds = await medicationService.getUserMedications(userId);
+    const schedules = await medicationService.getUserSchedule(userId, new Date().toISOString().split('T')[0]);
+    const rules = await medicationService.getContraindicationRules(detectedDrug.name);
 
     // --- HACKATHON DEMO LOGIC for Bottle B + Bottle C ---
     // If scanning Metformin, it should be "TAKE NOW" (green).

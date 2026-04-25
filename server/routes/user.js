@@ -8,7 +8,9 @@ const { sendMessage, bot } = require('../services/telegramBot');
  * Updates a user's Telegram ID and Caregiver Phone in MongoDB
  */
 router.post('/profile', async (req, res) => {
-  const { userId, telegramId, caregiverPhone } = req.body;
+  const telegramId = req.body.telegramId;
+  const caregiverPhone = req.body.caregiverPhone;
+  const userId = req.body.userId ? String(req.body.userId) : null;
 
   if (!userId) {
     return res.status(400).json({ error: 'Missing userId' });

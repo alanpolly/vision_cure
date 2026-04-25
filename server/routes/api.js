@@ -6,7 +6,6 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const MedicationSchedule = require('../models/MedicationSchedule');
-const supabase = require('../config/supabase');
 const {
   verifyMedication,
   getSchedule,
@@ -67,13 +66,7 @@ async function checkInteractionsInternal(userId, newMeds = []) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'dummy') return [];
 
-  let allMeds = [];
-  if (supabase) {
-    const { data: existingMeds, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
-    if (!error && existingMeds) allMeds = existingMeds;
-  } else {
-    allMeds = await MedicationSchedule.find({ userId }).lean();
-  }
+  let allMeds = await MedicationSchedule.find({ userId }).lean();
 
   const medNames = new Set(allMeds.map(m => m.name.toLowerCase()));
   newMeds.forEach(m => {
@@ -119,7 +112,7 @@ Return ONLY valid JSON array. No markdown.`;
 
 // POST /api/check-interactions
 router.post('/check-interactions', async (req, res) => {
-  const { userId } = req.body;
+  const userId = req.body.userId ? String(req.body.userId) : null;
   if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
   try {

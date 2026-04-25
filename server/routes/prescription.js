@@ -3,14 +3,13 @@ const router = express.Router();
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const MedicationSchedule = require('../models/MedicationSchedule');
-const supabase = require('../config/supabase');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 // POST /api/prescription/upload
 router.post('/upload', upload.single('image'), async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.body.userId ? String(req.body.userId) : null;
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -70,7 +69,7 @@ Example format:
       }
     }
 
-    // Save to Supabase (and Fallback to MongoDB for compatibility)
+    // Save to MongoDB
     if (data.medications && data.medications.length > 0 && userId) {
       try {
         const inserts = data.medications.map(m => ({
@@ -82,17 +81,7 @@ Example format:
           duration: m.duration || 'Ongoing'
         }));
 
-        // 1. Save to Supabase medication_schedule table
-        if (supabase) {
-          // Clear old schedule first
-          await supabase.from('medication_schedule').delete().eq('userId', userId);
-          const { error: sbError } = await supabase.from('medication_schedule').insert(inserts);
-          if (sbError) console.error('[SUPABASE ERROR] Insert failed:', sbError.message);
-          else console.log('[SUPABASE] Schedule updated.');
-        }
-
-        // 2. Keep MongoDB in sync (Optional, for backward compatibility)
-        // 2. Keep MongoDB in sync
+        // Keep MongoDB in sync
         for (const med of inserts) {
           await MedicationSchedule.updateOne(
             { userId: userId, name: med.name },
@@ -137,17 +126,7 @@ async function checkInteractionsInternal(userId, newMeds = []) {
   if (!apiKey || apiKey === 'dummy') return [];
 
   // 1. Get all medications (newly uploaded + existing ones)
-  let allMeds = [];
-  
-  if (supabase) {
-    const { data: existingMeds, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
-    if (!error && existingMeds) {
-      allMeds = existingMeds;
-    }
-  } else {
-    // Fallback to MongoDB if Supabase is not configured
-    allMeds = await MedicationSchedule.find({ userId }).lean();
-  }
+  let allMeds = await MedicationSchedule.find({ userId }).lean();
 
   // Combine with new meds if any (avoid duplicates by name)
   const medNames = new Set(allMeds.map(m => m.name.toLowerCase()));
@@ -197,7 +176,7 @@ Return ONLY valid JSON array. No markdown, no backticks.`;
 
 // POST /api/prescription/check-interactions
 router.post('/check-interactions', async (req, res) => {
-  const { userId } = req.body;
+  const userId = req.body.userId ? String(req.body.userId) : null;
   if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
   try {
@@ -210,16 +189,10 @@ router.post('/check-interactions', async (req, res) => {
 
 // GET /api/prescription/schedule
 router.get('/schedule', async (req, res) => {
-  const userId = req.query.userId || 'demo-user';
+  const userId = req.query.userId ? String(req.query.userId) : 'demo-user';
 
   try {
-    let data = [];
-    if (supabase) {
-      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
-      if (!error && sbData) data = sbData;
-    } else {
-      data = await MedicationSchedule.find({ userId: userId }).lean();
-    }
+    let data = await MedicationSchedule.find({ userId: userId }).lean();
     
     res.json({ medications: data || [] });
   } catch (err) {
@@ -230,16 +203,10 @@ router.get('/schedule', async (req, res) => {
 
 // GET /api/prescription/now
 router.get('/now', async (req, res) => {
-  const userId = req.query.userId || 'demo-user';
+  const userId = req.query.userId ? String(req.query.userId) : 'demo-user';
 
   try {
-    let data = [];
-    if (supabase) {
-      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
-      if (!error && sbData) data = sbData;
-    } else {
-      data = await MedicationSchedule.find({ userId: userId }).lean();
-    }
+    let data = await MedicationSchedule.find({ userId: userId }).lean();
 
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
@@ -262,17 +229,12 @@ router.get('/now', async (req, res) => {
 
 // POST /api/prescription/validate-scan
 router.post('/validate-scan', async (req, res) => {
-  const { scannedMedicine, userId } = req.body;
+  const scannedMedicine = req.body.scannedMedicine;
+  const userId = req.body.userId ? String(req.body.userId) : null;
   if (!userId) return res.json({ valid: true });
 
   try {
-    let data = [];
-    if (supabase) {
-      const { data: sbData, error } = await supabase.from('medication_schedule').select('*').eq('userId', userId);
-      if (!error && sbData) data = sbData;
-    } else {
-      data = await MedicationSchedule.find({ userId: userId }).lean();
-    }
+    let data = await MedicationSchedule.find({ userId: userId }).lean();
 
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();

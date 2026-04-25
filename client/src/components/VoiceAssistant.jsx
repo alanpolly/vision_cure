@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAccessibility } from '../context/AccessibilityContext';
 
-// Always use relative URL — Vite proxy forwards /api to the backend
-// for ALL clients (desktop and phone) since it runs server-side.
-const API_BASE = '';
+import { API_URL as API_BASE } from '../lib/api';
 
 function VoiceAssistant() {
   const [isListening, setIsListening] = useState(false);

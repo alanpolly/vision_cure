@@ -5,10 +5,17 @@ const jwt = require('jsonwebtoken');
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { email, password, fullName } = req.body;
+    const email = req.body.email ? String(req.body.email).trim().toLowerCase() : null;
+    const password = req.body.password;
+    const fullName = req.body.fullName ? String(req.body.fullName).trim() : null;
+    const phoneNumber = req.body.phoneNumber ? String(req.body.phoneNumber).trim() : '';
+    const address = req.body.address ? String(req.body.address).trim() : '';
+    const recoveryMail = req.body.recoveryMail ? String(req.body.recoveryMail).trim().toLowerCase() : '';
+    const securityQuestion = req.body.securityQuestion ? String(req.body.securityQuestion).trim() : '';
+    const securityAnswer = req.body.securityAnswer ? String(req.body.securityAnswer).trim().toLowerCase() : '';
 
     if (!email || !password || !fullName) {
-      return res.status(400).json({ error: 'Please provide all fields' });
+      return res.status(400).json({ error: 'Please provide full name, email and password' });
     }
 
     // Check if user exists
@@ -21,13 +28,26 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Handle optional profile photo upload
+    let profilePicUrl = '';
+    if (req.file) {
+      profilePicUrl = `/uploads/${req.file.filename}`;
+    }
+
     user = new User({
       email,
       password: hashedPassword,
-      fullName
+      fullName,
+      phoneNumber,
+      address,
+      recoveryMail,
+      securityQuestion,
+      securityAnswer,
+      profilePicUrl
     });
 
     await user.save();
+    console.log(`[AUTH] New user registered: ${email}`);
 
     // Create JWT Token
     const payload = { user: { id: user.id } };
@@ -43,12 +63,14 @@ exports.register = async (req, res) => {
         id: user.id,
         email: user.email,
         user_metadata: { full_name: user.fullName },
-        profilePicUrl: user.profilePicUrl
+        profilePicUrl: user.profilePicUrl,
+        phoneNumber: user.phoneNumber,
+        address: user.address
       }
     });
   } catch (err) {
     console.error('Registration Error:', err);
-    res.status(500).json({ error: 'Server Error', message: err.message });
+    res.status(500).json({ error: 'Server Error' });
   }
 };
 

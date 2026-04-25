@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
 
 // Ensure uploads dir exists
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -38,8 +39,16 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login requests per `window` (here, per 15 minutes)
+  message: { error: 'Too many login attempts. Please contact admin mail- thisisujjwalanand@gmail.com' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/register', upload.single('photo'), authController.register);
+router.post('/login', loginLimiter, authController.login);
 router.get('/session', authMiddleware, authController.verifySession);
 router.post('/profile-pic', [authMiddleware, upload.single('image')], authController.uploadProfilePic);
 
