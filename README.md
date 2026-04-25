@@ -26,6 +26,11 @@
 - **Nurse Hotlink**: Integrated SOS button for one-tap calling to the primary caregiver or nurse.
 - **Automated Escalation**: Automatically triggers caregiver notifications if critical medications are missed.
 
+### 🔒 Enterprise-Grade Security (New!)
+- **Google OAuth 2.0 Integration**: Secure, passwordless authentication using official Google Sign-In, eliminating password fatigue and securing user identity.
+- **Brute-Force Protection**: Implementation of `express-rate-limit` to automatically lock out malicious IP addresses after 5 failed login attempts.
+- **Decoupled Architecture**: Strict environment variable isolation (`API_URL`) ensuring zero hardcoded endpoints and strict CORS policies.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -55,6 +60,13 @@ JWT_SECRET=your_jwt_secret
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
+GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### 2. Frontend Configuration
+Create a `.env` file in the `client/` directory:
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ### 2. Database Setup
