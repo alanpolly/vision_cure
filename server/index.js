@@ -12,7 +12,13 @@ const PORT = process.env.PORT || 3001;
 
 // ---- Middleware ----
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://localhost:5173', /^http:\/\/10\.\d+\.\d+\.\d+:5173$/, /^https:\/\/10\.\d+\.\d+\.\d+:5173$/],
+  origin: [
+    'http://localhost:5173', 
+    'https://localhost:5173', 
+    /^http:\/\/10\.\d+\.\d+\.\d+:5173$/, 
+    /^https:\/\/10\.\d+\.\d+\.\d+:5173$/,
+    'https://visioncure-app.onrender.com'
+  ],
   credentials: true
 }));
 app.use(express.json({ limit: '20mb' })); // base64 images can be large
