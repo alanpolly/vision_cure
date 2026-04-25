@@ -82,6 +82,27 @@ export function AuthProvider({ children }) {
     return { user: data.user };
   };
 
+  const signInWithGoogle = async (googleToken) => {
+    const response = await fetch(`${API_URL}/api/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: googleToken })
+    });
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      throw new Error('Server connection lost during Google login. Please try again.');
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Google Login failed');
+
+    localStorage.setItem(TOKEN_KEY, data.token);
+    setUser(data.user);
+    return { user: data.user };
+  };
+
   const signOut = async () => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
@@ -104,6 +125,7 @@ export function AuthProvider({ children }) {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     getUserName,
     getToken,

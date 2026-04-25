@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Register a new user
 exports.register = async (req, res) => {
@@ -171,5 +174,56 @@ exports.uploadProfilePic = async (req, res) => {
   } catch (err) {
     console.error('Upload Error:', err);
     res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+// Google Login
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'No Google token provided' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+    
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const randomPassword = await bcrypt.hash(Date.now().toString() + Math.random().toString(), salt);
+      user = new User({
+        email,
+        fullName: name,
+        password: randomPassword,
+        profilePicUrl: picture,
+      });
+      await user.save();
+      console.log(`[AUTH] New user registered via Google: ${email}`);
+    } else {
+      console.log(`[AUTH] Existing user logged in via Google: ${email}`);
+    }
+    
+    // Create JWT
+    const jwtPayload = { user: { id: user.id } };
+    const jwtToken = jwt.sign(jwtPayload, process.env.JWT_SECRET || 'secret', { expiresIn: '5d' });
+    
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        user_metadata: { full_name: user.fullName },
+        profilePicUrl: user.profilePicUrl
+      }
+    });
+  } catch (err) {
+    console.error('Google login error:', err);
+    res.status(500).json({ error: 'Google login failed', message: err.message });
   }
 };

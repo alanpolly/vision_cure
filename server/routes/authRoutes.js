@@ -49,6 +49,7 @@ const loginLimiter = rateLimit({
 
 router.post('/register', upload.single('photo'), authController.register);
 router.post('/login', loginLimiter, authController.login);
+router.post('/google', authController.googleLogin);
 router.get('/session', authMiddleware, authController.verifySession);
 router.post('/profile-pic', [authMiddleware, upload.single('image')], authController.uploadProfilePic);
 

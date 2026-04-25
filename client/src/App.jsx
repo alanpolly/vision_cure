@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AccessibilityProvider } from './context/AccessibilityContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -60,18 +61,22 @@ function AppRoutes() {
 }
 
 function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '123456789-placeholder.apps.googleusercontent.com';
+  
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <LanguageProvider>
-            <AccessibilityProvider>
-              <AppRoutes />
-            </AccessibilityProvider>
-          </LanguageProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <LanguageProvider>
+              <AccessibilityProvider>
+                <AppRoutes />
+              </AccessibilityProvider>
+            </LanguageProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
 
