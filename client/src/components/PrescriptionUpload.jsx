@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 import DrugInteractionChecker from './DrugInteractionChecker';
+import { API_URL } from '../lib/api';
 
 function PrescriptionUpload({ onUploadComplete }) {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ function PrescriptionUpload({ onUploadComplete }) {
       formData.append('image', file);
       formData.append('userId', user?.id || 'demo-user');
 
-      const response = await fetch('/api/prescription/upload', {
+      const response = await fetch(`${API_URL}/api/prescription/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -48,7 +49,7 @@ function PrescriptionUpload({ onUploadComplete }) {
           
           // Also try the ElevenLabs route specifically for the premium voice
           try {
-            fetch('/api/voice/speak', {
+            fetch(`${API_URL}/api/voice/speak`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ text: warningText })

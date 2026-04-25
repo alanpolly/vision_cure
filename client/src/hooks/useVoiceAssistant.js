@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { API_URL } from '../lib/api';
 
 /**
  * Custom hook to handle voice assistant logic:
@@ -86,7 +87,7 @@ export function useVoiceAssistant() {
       console.log('[VOICE] User said:', userText);
 
       // 2. Chat
-      const chatRes = await fetch('/api/chat', {
+      const chatRes = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: userText }),
@@ -118,7 +119,7 @@ export function useVoiceAssistant() {
 
       // 3. Speak
       setStatus('speaking');
-      const speakRes = await fetch('/api/voice/speak', {
+      const speakRes = await fetch(`${API_URL}/api/voice/speak`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: assistantReply }),
@@ -163,7 +164,7 @@ export function useVoiceAssistant() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
 
-      const transcribeRes = await fetch('/api/voice/transcribe', {
+      const transcribeRes = await fetch(`${API_URL}/api/voice/transcribe`, {
         method: 'POST',
         body: formData,
       });

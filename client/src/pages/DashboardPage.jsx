@@ -5,6 +5,7 @@ import { Card, SectionHeader, TextReveal } from '../components/dashboard/DashCar
 import { useDash } from '../context/DashboardContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useLanguage } from '../context/LanguageContext';
+import { API_URL } from '../lib/api';
 
 function DashboardPage() {
   const { user, meds, takeMed, alerts, dismissAlert } = useDash();
@@ -18,7 +19,7 @@ function DashboardPage() {
   const runSafetyCheck = async () => {
     setChecking(true);
     try {
-      const res = await fetch('/api/prescription/check-interactions', {
+      const res = await fetch(`${API_URL}/api/prescription/check-interactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id || 'demo-user' })

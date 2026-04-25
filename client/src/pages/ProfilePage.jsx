@@ -5,6 +5,7 @@ import { Card, SectionHeader, TextReveal } from '../components/dashboard/DashCar
 import { useDash } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { API_URL } from '../lib/api';
 
 function ProfilePage() {
   const { user } = useDash();
@@ -24,7 +25,7 @@ function ProfilePage() {
   // Load existing profile on mount
   useEffect(() => {
     if (!authUser?.id) return;
-    fetch(`/api/user/profile/${authUser.id}`)
+    fetch(`${API_URL}/api/user/profile/${authUser.id}`)
       .then(r => r.json())
       .then(data => {
         if (data.profile) {
@@ -40,7 +41,7 @@ function ProfilePage() {
     setSaving(true);
     setStatusMsg('');
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await fetch(`${API_URL}/api/user/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: authUser.id, telegramId, caregiverPhone })
@@ -63,7 +64,7 @@ function ProfilePage() {
     setTesting(true);
     setStatusMsg('');
     try {
-      const res = await fetch('/api/user/telegram-test', {
+      const res = await fetch(`${API_URL}/api/user/telegram-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegramId })

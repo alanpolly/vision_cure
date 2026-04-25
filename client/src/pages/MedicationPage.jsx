@@ -6,6 +6,7 @@ import { TextReveal } from '../components/dashboard/DashCard';
 import { useDash } from '../context/DashboardContext';
 import DrugInteractionChecker from '../components/DrugInteractionChecker';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { API_URL } from '../lib/api';
 
 function MedicationPage() {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ function MedicationPage() {
       formData.append('image', file);
       formData.append('userId', user?.id || 'demo-user');
 
-      const response = await fetch('/api/prescription/upload', {
+      const response = await fetch(`${API_URL}/api/prescription/upload`, {
         method: 'POST',
         body: formData,
       });

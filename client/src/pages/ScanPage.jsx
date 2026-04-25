@@ -5,6 +5,7 @@ import { Card } from '../components/dashboard/DashCard';
 import { TextReveal } from '../components/dashboard/DashCard';
 import { useDash } from '../context/DashboardContext';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { API_URL } from '../lib/api';
 
 function ScanPage() {
   const navigate = useNavigate();
@@ -72,7 +73,7 @@ function ScanPage() {
 
     try {
       // 1. Send frame to Gemini Vision to identify the drug
-      const res = await fetch('/api/verify', {
+      const res = await fetch(`${API_URL}/api/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64Data, userId: user?.id || 'demo-user' })
@@ -97,7 +98,7 @@ function ScanPage() {
 
       // 2. Validate against timeline
       if (detected && detected.name !== 'Unknown Medication') {
-        const valRes = await fetch('/api/prescription/validate-scan', {
+        const valRes = await fetch(`${API_URL}/api/prescription/validate-scan`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scannedMedicine: detected.name, userId: user?.id || 'demo-user' })

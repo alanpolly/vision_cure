@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useDash } from '../context/DashboardContext';
+import { API_URL } from '../lib/api';
 
 /**
  * TelegramSetup Component
@@ -19,7 +21,7 @@ function TelegramSetup({ userId }) {
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch(`/api/user/profile/${userId}`);
+      const res = await fetch(`${API_URL}/api/user/profile/${userId}`);
       const data = await res.json();
       if (data.profile) {
         setExistingProfile(data.profile);
@@ -35,7 +37,7 @@ function TelegramSetup({ userId }) {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await fetch(`${API_URL}/api/user/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, telegramId, caregiverPhone }),

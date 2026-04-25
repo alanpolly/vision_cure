@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
+import { API_URL } from '../lib/api';
 
 const DashboardContext = createContext(null);
 export const useDash = () => useContext(DashboardContext);
@@ -36,7 +37,7 @@ export function DashboardProvider({ children }) {
   const fetchMedications = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/prescription/schedule?userId=${user?.id || 'demo-user'}`);
+      const res = await fetch(`${API_URL}/api/prescription/schedule?userId=${user?.id || 'demo-user'}`);
       if (res.ok) {
         const data = await res.json();
         
