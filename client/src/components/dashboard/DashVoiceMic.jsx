@@ -364,5 +364,3 @@ export default function DashVoiceMic() {
     </>
   );
 };
-
-export default DashVoiceMic;
